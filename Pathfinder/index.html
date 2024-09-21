@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinding Algorithm</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+
+        #orientation-lock {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000; /* Changed to solid black */
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2em;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        p {
+            text-align: center;
+            margin: 10px 20px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(20, 30px);
+            gap: 1px;
+            margin: 10px;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ccc;
+        }
+
+        .cell.start {
+            background-color: green;
+        }
+
+        .cell.end {
+            background-color: red;
+        }
+
+        .cell.wall {
+            background-color: black;
+        }
+
+        .cell.path {
+            background-color: yellow;
+            transition: background-color 0.3s ease;
+        }
+
+        .cell.closed {
+            background-color: lightblue;
+            transition: background-color 0.3s ease;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #solve-maze:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="orientation-lock">
+        <p>Please rotate your device to landscape mode.</p>
+    </div>
+    <h1>Maze Making Game</h1>
+    <p>Click a cell to set the start, end, or walls. Click on border cells to set the exit point.</p>
+    <div id="grid"></div>
+    <button id="solve-maze" disabled>Solve Maze</button>
+    <button id="reset-pathfinding">Reset Pathfinding</button>
+    <button id="reset-maze">Reset Maze</button>
+    <button id="redirect-old-version">Go to Old Version</button> <!-- Added button -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const orientationLock = document.getElementById('orientation-lock');
+            
+            function checkOrientation() {
+                if (window.innerWidth < window.innerHeight) {
+                    orientationLock.style.display = 'flex';
+                } else {
+                    orientationLock.style.display = 'none';
+                }
+            }
+
+            window.addEventListener('resize', checkOrientation);
+            checkOrientation();
+
+            const grid = document.getElementById('grid');
+            const rows = 20;
+            const cols = 20;
+            const solveMazeButton = document.getElementById('solve-maze');
+            const resetMazeButton = document.getElementById('reset-maze');
+            const resetPathfindingButton = document.getElementById('reset-pathfinding');
+            const redirectOldVersionButton = document.getElementById('redirect-old-version'); // New button reference
+
+            redirectOldVersionButton.addEventListener('click', () => {
+                window.location.href = 'old/index.html'; // Path to the old version
+            });
+
+            function createGrid() {
+                grid.innerHTML = '';
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+
+                        if (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) {
+                            cell.classList.add('wall');
+                        }
+
+                        grid.appendChild(cell);
+                    }
+                }
+            }
+
+            createGrid();
+
+            let startSet = false;
+            let endSet = false;
+            let startCell, endCell;
+
+            grid.addEventListener('click', (e) => {
+                if (e.target.classList.contains('cell')) {
+                    const row = parseInt(e.target.dataset.row);
+                    const col = parseInt(e.target.dataset.col);
+
+                    if (!startSet && !e.target.classList.contains('wall') && !e.target.classList.contains('end')) {
+                        e.target.classList.add('start');
+                        startCell = e.target;
+                        startSet = true;
+                        solveMazeButton.disabled = !startSet || !endSet;
+                    } else if (!endSet && (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) && !e.target.classList.contains('start')) {
+                        e.target.classList.remove('wall');
+                        e.target.classList.add('end');
+                        endCell = e.target;
+                        endSet = true;
+                        solveMazeButton.disabled = !startSet || !endSet;
+                    } else if (e.target.classList.contains('start')) {
+                        e.target.classList.remove('start');
+                        startSet = false;
+                        startCell = null;
+                        solveMazeButton.disabled = true;
+                    } else if (e.target.classList.contains('end')) {
+                        e.target.classList.remove('end');
+                        e.target.classList.add('wall');
+                        endSet = false;
+                        endCell = null;
+                        solveMazeButton.disabled = true;
+                    } else if (startSet && !e.target.classList.contains('end') && (row !== 0 && row !== rows - 1 && col !== 0 && col !== cols - 1)) {
+                        e.target.classList.toggle('wall');
+                    }
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && startSet && endSet) {
+                    aStarAlgorithm(startCell, endCell);
+                }
+            });
+
+            solveMazeButton.addEventListener('click', () => {
+                if (startSet && endSet) {
+                    aStarAlgorithm(startCell, endCell);
+                }
+            });
+
+            resetMazeButton.addEventListener('click', () => {
+                createGrid();
+                startSet = false;
+                endSet = false;
+                startCell = null;
+                endCell = null;
+                solveMazeButton.disabled = true;
+            });
+
+            resetPathfindingButton.addEventListener('click', () => {
+                clearPathfinding();
+            });
+
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            function clearPathfinding() {
+                const pathCells = document.querySelectorAll('.path, .closed');
+                pathCells.forEach(cell => {
+                    cell.classList.remove('path', 'closed');
+                });
+            }
+
+            async function aStarAlgorithm(startCell, endCell) {
+                const openSet = [];
+                const closedSet = [];
+                const grid = createGridArray(rows, cols);
+
+                const start = {
+                    row: parseInt(startCell.dataset.row),
+                    col: parseInt(startCell.dataset.col),
+                    g: 0,
+                    h: heuristic({ row: parseInt(startCell.dataset.row), col: parseInt(startCell.dataset.col) }, { row: parseInt(endCell.dataset.row), col: parseInt(endCell.dataset.col) }),
+                    f: 0,
+                    parent: null
+                };
+                start.f = start.g + start.h;
+
+                const end = {
+                    row: parseInt(endCell.dataset.row),
+                    col: parseInt(endCell.dataset.col)
+                };
+
+                openSet.push(start);
+
+                function heuristic(cellA, cellB) {
+                    return Math.abs(cellA.row - cellB.row) + Math.abs(cellA.col - cellB.col);
+                }
+
+                function createGridArray(rows, cols) {
+                    const gridArray = [];
+                    for (let row = 0; row < rows; row++) {
+                        const rowArray = [];
+                        for (let col = 0; col < cols; col++) {
+                            rowArray.push({
+                                row: row,
+                                col: col,
+                                wall: document.querySelector(`[data-row="${row}"][data-col="${col}"]`).classList.contains('wall')
+                            });
+                        }
+                        gridArray.push(rowArray);
+                    }
+                    return gridArray;
+                }
+
+                function getNeighbors(node) {
+                    const neighbors = [];
+                    const { row, col } = node;
+                    if (row > 0) neighbors.push(grid[row - 1][col]);
+                    if (row < rows - 1) neighbors.push(grid[row + 1][col]);
+                    if (col > 0) neighbors.push(grid[row][col - 1]);
+                    if (col < cols - 1) neighbors.push(grid[row][col + 1]);
+
+                    return neighbors;
+                }
+
+                function reconstructPath(currentNode) {
+                    while (currentNode.parent) {
+                        const cell = document.querySelector(`[data-row="${currentNode.row}"][data-col="${currentNode.col}"]`);
+                        cell.classList.add('path');
+                        currentNode = currentNode.parent;
+                    }
+                }
+
+                while (openSet.length > 0) {
+                    let currentIndex = 0;
+                    for (let i = 0; i < openSet.length; i++) {
+                        if (openSet[i].f < openSet[currentIndex].f) {
+                            currentIndex = i;
+                        }
+                    }
+                    const current = openSet[currentIndex];
+
+                    if (current.row === end.row && current.col === end.col) {
+                        reconstructPath(current);
+                        return;
+                    }
+
+                    openSet.splice(currentIndex, 1);
+                    closedSet.push(current);
+
+                    const cell = document.querySelector(`[data-row="${current.row}"][data-col="${current.col}"]`);
+                    if (!cell.classList.contains('start') && !cell.classList.contains('end')) {
+                        cell.classList.add('closed');
+                    }
+
+                    const neighbors = getNeighbors(current);
+                    for (const neighbor of neighbors) {
+                        if (closedSet.some(node => node.row === neighbor.row && node.col === neighbor.col) || neighbor.wall) {
+                            continue;
+                        }
+
+                        const tentativeG = current.g + 1;
+                        let newPath = false;
+
+                        const h = heuristic(neighbor, end);
+                        if (h === Infinity) {
+                            continue;
+                        }
+
+                        if (!openSet.some(node => node.row === neighbor.row && node.col === neighbor.col)) {
+                            newPath = true;
+                            neighbor.h = h;
+                            openSet.push(neighbor);
+                        } else if (tentativeG < neighbor.g) {
+                            newPath = true;
+                        }
+
+                        if (newPath) {
+                            neighbor.g = tentativeG;
+                            neighbor.f = neighbor.g + neighbor.h;
+                            neighbor.parent = current;
+                        }
+                    }
+
+                    await sleep(200);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
