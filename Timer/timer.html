@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countdown Timer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="timer-screen">
+            <div id="timer">Loading...</div>
+            <p id="phrase-display"></p>
+        </div>
+    </div>
+
+    <script>
+        function getUrlParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        const timeDifference = getUrlParameter('timeDifference');
+        const phraseInput = getUrlParameter('phrase');
+
+        document.getElementById('phrase-display').innerText = phraseInput || '[insert text] timer';
+
+        function startTimer(duration) {
+            const timerElement = document.getElementById('timer');
+            const endTime = Date.now() + parseInt(duration, 10);
+
+            function updateTimer() {
+                const now = Date.now();
+                const remaining = endTime - now;
+
+                if (remaining <= 0) {
+                    timerElement.innerText = `[ 00:00:00:00 ]`;
+                    timerElement.style.color = 'red';
+                    return;
+                }
+
+                const hours = Math.floor((remaining % 86400000) / 3600000);
+                const minutes = Math.floor((remaining % 3600000) / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                const milliseconds = Math.floor((remaining % 1000) / 10);
+
+                timerElement.innerText = `[ ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(milliseconds).padStart(2, '0')} ]`;
+
+                if (remaining <= 10000) {
+                    timerElement.style.color = 'red';
+                } else {
+                    timerElement.style.color = 'white';
+                }
+
+                requestAnimationFrame(updateTimer);
+            }
+
+            updateTimer();
+        }
+
+        if (timeDifference) {
+            startTimer(timeDifference);
+        } else {
+            document.getElementById('timer').innerText = 'Invalid time.';
+        }
+    </script>
+</body>
+</html>
