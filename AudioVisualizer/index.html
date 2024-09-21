@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Visualizer</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<h1>Audio Visualizer</h1>
+<div class="file-input-container" id="file-input-label">
+  <input type="file" accept="audio/*" id="audio-file-input">
+</div>
+<div id="audio-container">
+  <div id="custom-audio-player">
+    <button id="play-pause-btn">►</button>
+    <div id="progress-bar-container">
+      <input type="range" id="progress-bar" value="0">
+    </div>
+    <span id="time-display">0:00</span>
+  </div>
+  <audio id="audio-player"></audio>
+  <canvas id="audio-visualizer"></canvas>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
