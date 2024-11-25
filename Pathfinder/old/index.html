@@ -155,7 +155,6 @@
             const resetMazeButton = document.getElementById('reset-maze');
             const goNewVersionButton = document.getElementById('go-new-version');
 
-            // Create grid and fill edges with walls
             function createGrid() {
                 grid.innerHTML = '';
                 for (let row = 0; row < rows; row++) {
@@ -165,7 +164,6 @@
                         cell.dataset.row = row;
                         cell.dataset.col = col;
 
-                        // Add border cells as walls
                         if (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) {
                             cell.classList.add('wall');
                         }
@@ -181,7 +179,6 @@
             let endSet = false;
             let startCell, endCell;
 
-            // Add click event to set start, end, wall or clear cell
             grid.addEventListener('click', (e) => {
                 if (e.target.classList.contains('cell')) {
                     const row = parseInt(e.target.dataset.row);
@@ -215,7 +212,6 @@
                 }
             });
 
-            // Add keydown event to start the algorithm
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && startSet && endSet) {
                     aStarAlgorithm(startCell, endCell);
